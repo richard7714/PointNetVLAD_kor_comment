@@ -29,8 +29,8 @@ BN_DECAY_CLIP = 0.99
 
 RESUME = False
 
-TRAIN_FILE = 'generating_queries/training_queries_baseline.pickle'
-TEST_FILE = 'generating_queries/test_queries_baseline.pickle'
+TRAIN_FILE = 'generating_queries/training_queries_refine.pickle'
+TEST_FILE = 'generating_queries/test_queries_refine.pickle'
 
 # LOSS
 LOSS_FUNCTION = 'quadruplet'

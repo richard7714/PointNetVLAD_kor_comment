@@ -55,7 +55,7 @@ parser.add_argument('--margin_1', type=float, default=0.5,
                     help='Margin for hinge loss [default: 0.5]')
 parser.add_argument('--margin_2', type=float, default=0.2,
                     help='Margin for hinge loss [default: 0.2]')
-parser.add_argument('--loss_function', default='quadruplet', choices=[
+parser.add_argument('--loss_function', default='triplet', choices=[
                     'triplet', 'quadruplet'], help='triplet or quadruplet [default: quadruplet]')
 parser.add_argument('--loss_not_lazy', action='store_false',
                     help='If present, do not use lazy variant of loss')
@@ -89,8 +89,8 @@ cfg.TRIPLET_USE_BEST_POSITIVES = FLAGS.triplet_use_best_positives
 cfg.LOSS_LAZY = FLAGS.loss_not_lazy
 cfg.LOSS_IGNORE_ZERO_BATCH = FLAGS.loss_ignore_zero_batch
 
-cfg.TRAIN_FILE = 'generating_queries/training_queries_baseline.pickle'
-cfg.TEST_FILE = 'generating_queries/test_queries_baseline.pickle'
+cfg.TRAIN_FILE = 'generating_queries/training_queries_refine.pickle'
+cfg.TEST_FILE = 'generating_queries/test_queries_refine.pickle'
 
 cfg.LOG_DIR = FLAGS.log_dir
 if not os.path.exists(cfg.LOG_DIR):
@@ -436,7 +436,6 @@ def get_latent_vectors(model, dict_to_process):
             q_output = output
 
     model.train()
-    print(q_output.shape)
     return q_output
 
 

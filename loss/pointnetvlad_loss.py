@@ -1,18 +1,30 @@
 import numpy as np
 import math
 import torch
-
+import sys
 
 def best_pos_distance(query, pos_vecs):
+    
+    # (2, 2, 256)
     num_pos = pos_vecs.shape[1]
+    
+    # query : (2, 1, 256) => 1번 차원에 대해 pos_vec 개수만큼 repeat 적용
     query_copies = query.repeat(1, int(num_pos), 1)
+    
+    # 두 vec간의 L2 Norm. sqrt가 되지않은
     diff = ((pos_vecs - query_copies) ** 2).sum(2)
+    
+    # diff 중 가장 작은 vect와 가장 큰 vect의 value 획득
+    # Value, indices
     min_pos, _ = diff.min(1)
     max_pos, _ = diff.max(1)
+    
     return min_pos, max_pos
 
 
 def triplet_loss(q_vec, pos_vecs, neg_vecs, margin, use_min=False, lazy=False, ignore_zero_loss=False):
+    
+    # pos_vecs 내에서 q_vec과 가장 가까운 vect하나와 가장 먼 vect하나를 획득
     min_pos, max_pos = best_pos_distance(q_vec, pos_vecs)
 
     # PointNetVLAD official code use min_pos, but i think max_pos should be used
@@ -21,14 +33,25 @@ def triplet_loss(q_vec, pos_vecs, neg_vecs, margin, use_min=False, lazy=False, i
     else:
         positive = max_pos
 
+    # neg vect의 개수
     num_neg = neg_vecs.shape[1]
+    
+    # batch의 크기
     batch = q_vec.shape[0]
+    
+    # q_vec를 num_neg만큼 repeat한 matrix 생성
     query_copies = q_vec.repeat(1, int(num_neg), 1)
+    
+    # positive를 2차원으로 만들고, num_neg만큼 반복하여 2차원 행렬 생성
+    # (2) => (2, 1)
     positive = positive.view(-1, 1)
     positive = positive.repeat(1, int(num_neg))
-
+    
     loss = margin + positive - ((neg_vecs - query_copies) ** 2).sum(2)
+    
+    # clamp : 주어진 범위에서 값이 벗어나면 그 값을 해당 범위의 최소값 또는 최대값으로 잘라내는 역할 수행
     loss = loss.clamp(min=0.0)
+    
     if lazy:
         triplet_loss = loss.max(1)[0]
     else:
@@ -47,6 +70,8 @@ def triplet_loss_wrapper(q_vec, pos_vecs, neg_vecs, other_neg, m1, m2, use_min=F
 
 
 def quadruplet_loss(q_vec, pos_vecs, neg_vecs, other_neg, m1, m2, use_min=False, lazy=False, ignore_zero_loss=False):
+    
+    # pos_vecs 내에서 q_vec과 가장 가까운 vect하나와 가장 먼 vect하나를 획득
     min_pos, max_pos = best_pos_distance(q_vec, pos_vecs)
 
     # PointNetVLAD official code use min_pos, but i think max_pos should be used
@@ -55,13 +80,23 @@ def quadruplet_loss(q_vec, pos_vecs, neg_vecs, other_neg, m1, m2, use_min=False,
     else:
         positive = max_pos
 
+    # neg vect의 개수
     num_neg = neg_vecs.shape[1]
+    
+    # batch의 크기    
     batch = q_vec.shape[0]
+    
+    # q_vec를 num_neg만큼 repeat한 matrix 생성
     query_copies = q_vec.repeat(1, int(num_neg), 1)
+    
+    # positive를 2차원으로 만들고, num_neg만큼 반복하여 2차원 행렬 생성
+    # (2) => (2, 1)
     positive = positive.view(-1, 1)
     positive = positive.repeat(1, int(num_neg))
 
     loss = m1 + positive - ((neg_vecs - query_copies) ** 2).sum(2)
+    
+    # clamp : 주어진 범위에서 값이 벗어나면 그 값을 해당 범위의 최소값 또는 최대값으로 잘라내는 역할 수행    
     loss = loss.clamp(min=0.0)
     if lazy:
         triplet_loss = loss.max(1)[0]
