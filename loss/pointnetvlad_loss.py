@@ -98,25 +98,40 @@ def quadruplet_loss(q_vec, pos_vecs, neg_vecs, other_neg, m1, m2, use_min=False,
     
     # clamp : 주어진 범위에서 값이 벗어나면 그 값을 해당 범위의 최소값 또는 최대값으로 잘라내는 역할 수행    
     loss = loss.clamp(min=0.0)
+    
+    # 기존의 distance에서 Tuple 내 모든 pointcloud와 유사하지 않은 negative Pointcloud와 Tuple 내 Negative PCL간의 거리를 최대화
     if lazy:
         triplet_loss = loss.max(1)[0]
     else:
         triplet_loss = loss.sum(1)
+    
+    # 
     if ignore_zero_loss:
+        # 크면 True, 작으면 False. Hard Assignment인듯
         hard_triplets = torch.gt(triplet_loss, 1e-16).float()
+        
+        # True의 갯수
         num_hard_triplets = torch.sum(hard_triplets)
+        
+        # 전체 Loss의 평균
         triplet_loss = triplet_loss.sum() / (num_hard_triplets + 1e-16)
     else:
         triplet_loss = triplet_loss.mean()
 
+    # P_neg*
     other_neg_copies = other_neg.repeat(1, int(num_neg), 1)
+    
+    # second loss 계산
     second_loss = m2 + positive - ((neg_vecs - other_neg_copies) ** 2).sum(2)
     second_loss = second_loss.clamp(min=0.0)
+    
+    # Todo
     if lazy:
         second_loss = second_loss.max(1)[0]
     else:
         second_loss = second_loss.sum(1)
 
+    # Hard assign or 그냥
     if ignore_zero_loss:
         hard_second = torch.gt(second_loss, 1e-16).float()
         num_hard_second = torch.sum(hard_second)

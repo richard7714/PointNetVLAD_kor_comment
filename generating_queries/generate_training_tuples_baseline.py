@@ -72,14 +72,18 @@ def construct_query_dict(df_centroids, filename):
     ind_r = tree.query_radius(df_centroids[['northing','easting']], r=50)
     queries = {}
     for i in range(len(ind_nn)):
+        
         # iloc : 행 번호(row number)로 자료를 선택하는 방법
         query = df_centroids.iloc[i]["file"]
+        
         # np.setdiff1d : 첫 배열 x로부터 두번째 배열 y를 뺀 차집합 반환
         # i번째 point의 positive 중 i번째는 제외
         positives = np.setdiff1d(ind_nn[i],[i]).tolist()
+        
         # df_centorid의 index중, 50이내에도 들지 못한 index들
         negatives = np.setdiff1d(
             df_centroids.index.values.tolist(),ind_r[i]).tolist()
+        
         # index 섞기 => permutation?
         random.shuffle(negatives)
         
@@ -100,6 +104,7 @@ df_test = pd.DataFrame(columns=['file','northing','easting'])
 
 # 리스트로 만들어놓은 folders의 각 folder에 대해 연산 진행
 for folder in folders:
+    
     # dataframe path를 얻어 csv read
     df_locations = pd.read_csv(os.path.join(
         base_path,runs_folder,folder,filename),sep=',')
@@ -115,8 +120,10 @@ for folder in folders:
         
         # p를 기준으로 testset, trainset 구분
         if(check_in_test_set(row['northing'], row['easting'], p, x_width, y_width)):
+            
             # ignore_index : 기존 index를 무시하고 재설정 (0,1,2,3,...)
             df_test = df_test.append(row, ignore_index=True)
+            
         else:
             df_train = df_train.append(row, ignore_index=True)
 
