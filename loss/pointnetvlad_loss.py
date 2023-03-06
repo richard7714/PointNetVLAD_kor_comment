@@ -28,6 +28,7 @@ def triplet_loss(q_vec, pos_vecs, neg_vecs, margin, use_min=False, lazy=False, i
     min_pos, max_pos = best_pos_distance(q_vec, pos_vecs)
 
     # PointNetVLAD official code use min_pos, but i think max_pos should be used
+    # Query와 가장 거리가 먼 positive vector를 이용해야 학습의 의미가 있다
     if use_min:
         positive = min_pos
     else:
@@ -52,10 +53,14 @@ def triplet_loss(q_vec, pos_vecs, neg_vecs, margin, use_min=False, lazy=False, i
     # clamp : 주어진 범위에서 값이 벗어나면 그 값을 해당 범위의 최소값 또는 최대값으로 잘라내는 역할 수행
     loss = loss.clamp(min=0.0)
     
+    # NetVLAD와 PointNetVLAD의 triplet loss는 아예 다르다.
     if lazy:
         triplet_loss = loss.max(1)[0]
     else:
         triplet_loss = loss.sum(1)
+        
+    # Batch들 중, triplet_loss가 거의 0에 가까운 것들은 평균 계산에서 제외한다.
+    # 분모에서도 제외되므로 평균 값 계산에서 의미를 가짐
     if ignore_zero_loss:
         hard_triplets = torch.gt(triplet_loss, 1e-16).float()
         num_hard_triplets = torch.sum(hard_triplets)
@@ -125,13 +130,14 @@ def quadruplet_loss(q_vec, pos_vecs, neg_vecs, other_neg, m1, m2, use_min=False,
     second_loss = m2 + positive - ((neg_vecs - other_neg_copies) ** 2).sum(2)
     second_loss = second_loss.clamp(min=0.0)
     
-    # Todo
+    # NetVLAD와 PointNetVLAD의 triplet loss는 아예 다르다.
     if lazy:
         second_loss = second_loss.max(1)[0]
     else:
         second_loss = second_loss.sum(1)
 
-    # Hard assign or 그냥
+    # Batch들 중, triplet_loss가 거의 0에 가까운 것들은 평균 계산에서 제외한다.
+    # 분모에서도 제외되므로 평균 값 계산에서 의미를 가짐
     if ignore_zero_loss:
         hard_second = torch.gt(second_loss, 1e-16).float()
         num_hard_second = torch.sum(hard_second)

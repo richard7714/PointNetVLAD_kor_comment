@@ -21,7 +21,7 @@ folders = []
 
 # All runs are used for training (both full and partial)
 
-# Todo
+# TODO
 # 0부터 전체 폴더 갯수-2 까지 <- 왜 한개를 더 빼지??
 index_list = range(len(all_folders)-1)
 
@@ -42,7 +42,6 @@ p4 = [5734749.303802,619932.693364]
 p = [p1,p2,p3,p4]
 
 
-# 
 def check_in_test_set(northing, easting, points, x_width, y_width):
     in_test_set = False
     
@@ -67,7 +66,6 @@ def construct_query_dict(df_centroids, filename):
     # KDTree 선언
     tree = KDTree(df_centroids[['northing','easting']])
     
-    # 
     ind_nn = tree.query_radius(df_centroids[['northing','easting']],r=10)
     ind_r = tree.query_radius(df_centroids[['northing','easting']], r=50)
     queries = {}
@@ -84,6 +82,7 @@ def construct_query_dict(df_centroids, filename):
         negatives = np.setdiff1d(
             df_centroids.index.values.tolist(),ind_r[i]).tolist()
         
+        # TODO 
         # index 섞기 => permutation?
         random.shuffle(negatives)
         
