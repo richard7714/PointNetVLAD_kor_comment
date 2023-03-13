@@ -81,29 +81,46 @@ def jitter_point_cloud(batch_data, sigma=0.005, clip=0.05):
     jittered_data += batch_data
     return jittered_data
 
+# dict_value : TRAINING_QUERIES[batch_keys[j]], batch_keys[j] 번째 dict
+# dict는 {idx : values}로 구성되어 있으며, values에는 {query, positives, negatives}가 dictionary 형태로 존재
+# query는 directory 형식, positives와 negatives는 index가 저장
+
+# num_pos : cfg.TRAIN_POSITIVES_PER_QUERY, positive 개수
+# num_neg : cfg.TRAIN_NEGATIVES_PER_QUERY, negative 개수
+# QUERY_DICT : TRAINING_QUERIES
 
 def get_query_tuple(dict_value, num_pos, num_neg, QUERY_DICT, hard_neg=[], other_neg=False):
         # get query tuple for dictionary entry
         # return list [query,positives,negatives]
 
+    
+    # dictionary에 query에 해당하는 pc를 불러온다
+    # query에는 directory 형식이 저장되어 있다.
     query = load_pc_file(dict_value["query"])  # Nx3
 
     random.shuffle(dict_value["positives"])
     pos_files = []
 
     for i in range(num_pos):
+        
+        # i번째 positive에 해당하는 bin파일 경로를 QUERY_DICT를 이용해 획득 후, pos_files에 append
         pos_files.append(QUERY_DICT[dict_value["positives"][i]]["query"])
-    #positives= load_pc_files(dict_value["positives"][0:num_pos])
+    
     positives = load_pc_files(pos_files)
 
     neg_files = []
     neg_indices = []
+    
+    # positive와 같은 방식으로 진행
     if(len(hard_neg) == 0):
         random.shuffle(dict_value["negatives"])
         for i in range(num_neg):
             neg_files.append(QUERY_DICT[dict_value["negatives"][i]]["query"])
             neg_indices.append(dict_value["negatives"][i])
 
+    # TODO
+    # hard_neg가 존재할 경우 해당 정보를 이용
+    # 어느 경우에 존재하지?
     else:
         random.shuffle(dict_value["negatives"])
         for i in hard_neg:
@@ -111,7 +128,9 @@ def get_query_tuple(dict_value, num_pos, num_neg, QUERY_DICT, hard_neg=[], other
             neg_indices.append(i)
         j = 0
         while(len(neg_files) < num_neg):
-
+            
+            # hard_neg에 존재하지 않는 negative도 neg_file에 추가함
+            # 이때 추가는 파일 directory를 이용
             if not dict_value["negatives"][j] in hard_neg:
                 neg_files.append(
                     QUERY_DICT[dict_value["negatives"][j]]["query"])
@@ -122,21 +141,30 @@ def get_query_tuple(dict_value, num_pos, num_neg, QUERY_DICT, hard_neg=[], other
 
     if other_neg is False:
         return [query, positives, negatives]
+    
     # For Quadruplet Loss
     else:
+        
         # get neighbors of negatives and query
         neighbors = []
+        
+        # 현재 dict에 해당하는 positive => neighbor
         for pos in dict_value["positives"]:
             neighbors.append(pos)
+        
+        # 현재 negative가 가지는 positive => neighbor
         for neg in neg_indices:
             for pos in QUERY_DICT[neg]["positives"]:
                 neighbors.append(pos)
+        
+        # Neighbor를 제외한 나머지에서 possible negative를 검색
         possible_negs = list(set(QUERY_DICT.keys())-set(neighbors))
         random.shuffle(possible_negs)
 
         if(len(possible_negs) == 0):
             return [query, positives, negatives, np.array([])]
 
+        # 왜 0? => Random sampling
         neg2 = load_pc_file(QUERY_DICT[possible_negs[0]]["query"])
 
         return [query, positives, negatives, neg2]

@@ -10,8 +10,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from torch.backends import cudnn
-`
-from sklearn.neighbors import NearestNeighbors`
+from sklearn.neighbors import NearestNeighbors
 from sklearn.neighbors import KDTree
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -48,7 +47,8 @@ def evaluate():
 def evaluate_model(model):
     DATABASE_SETS = get_sets_dict(cfg.EVAL_DATABASE_FILE)
     QUERY_SETS = get_sets_dict(cfg.EVAL_QUERY_FILE)
-
+    
+    # 폴더가 없을경우 생성
     if not os.path.exists(cfg.RESULTS_FOLDER):
         os.mkdir(cfg.RESULTS_FOLDER)
 
@@ -60,12 +60,13 @@ def evaluate_model(model):
     DATABASE_VECTORS = []
     QUERY_VECTORS = []
 
+    # Latent vector stack
     for i in range(len(DATABASE_SETS)):
         DATABASE_VECTORS.append(get_latent_vectors(model, DATABASE_SETS[i]))
 
     for j in range(len(QUERY_SETS)):
         QUERY_VECTORS.append(get_latent_vectors(model, QUERY_SETS[j]))
-
+    
     for m in range(len(QUERY_SETS)):
         for n in range(len(QUERY_SETS)):
             if (m == n):
@@ -79,16 +80,20 @@ def evaluate_model(model):
                 similarity.append(x)
 
     print()
+    # print(recall)
+    
+    # TODO
+    # Recall을 왜 평균?
     ave_recall = recall / count
-    # print(ave_recall)
+    print(ave_recall)
 
     # print(similarity)
     average_similarity = np.mean(similarity)
-    # print(average_similarity)
+    print(average_similarity)
 
     ave_one_percent_recall = np.mean(one_percent_recall)
-    # print(ave_one_percent_recall)
-
+    print(ave_one_percent_recall)
+    
     with open(cfg.OUTPUT_FILE, "w") as output:
         output.write("Average Recall @N:\n")
         output.write(str(ave_recall))
@@ -163,45 +168,68 @@ def get_latent_vectors(model, dict_to_process):
 
 
 def get_recall(m, n, DATABASE_VECTORS, QUERY_VECTORS, QUERY_SETS):
-
+    
+    # TODO
+    # m, n번째의 pcd와 어떠한 관계에 있는 PointNetVLAD vectors
     database_output = DATABASE_VECTORS[m]
     queries_output = QUERY_VECTORS[n]
 
-    # print(len(queries_output))
+    
     database_nbrs = KDTree(database_output)
 
     num_neighbors = 25
+
+    # recall = [0, 0, ..., 0] ~ 25개
     recall = [0] * num_neighbors
 
     top1_similarity_score = []
     one_percent_retrieved = 0
+    
+    # threshold는 1 이상의 정수
     threshold = max(int(round(len(database_output)/100.0)), 1)
 
     num_evaluated = 0
+    
+    # 0 ~ 151
     for i in range(len(queries_output)):
+        
         true_neighbors = QUERY_SETS[n][i][m]
         if(len(true_neighbors) == 0):
             continue
         num_evaluated += 1
+        
+        # 입력한 queries_output[i]와 인접하는 num_neighbors개의 indices를 획득
         distances, indices = database_nbrs.query(
             np.array([queries_output[i]]),k=num_neighbors)
+        
+        # indices => (1, 25)
+        # indices[0] => 25
         for j in range(len(indices[0])):
+            
+            # true_neighbor에 얻은 indices가 들어있다면,
             if indices[0][j] in true_neighbors:
+                
+                # 그것이 top1인 경우 similarity를 계산하여 top1에 기록
                 if(j == 0):
+                    
+                    # query vector와 그것과 유사하다고 판단된 database의 vector간 유사도 계산
                     similarity = np.dot(
                         queries_output[i], database_output[indices[0][j]])
                     top1_similarity_score.append(similarity)
+                
                 recall[j] += 1
                 break
-
+        
+        # threshold까지의 index중 true와 겹치는 것이 하나라도 있다면 one_percent_retrieved에 1 추가
         if len(list(set(indices[0][0:threshold]).intersection(set(true_neighbors)))) > 0:
             one_percent_retrieved += 1
 
+    
     one_percent_recall = (one_percent_retrieved/float(num_evaluated))*100
+    
+    # cumsum : row, column의 구분없이 누적 sum
     recall = (np.cumsum(recall)/float(num_evaluated))*100
-    # print(recall)
-    # print(np.mean(top1_similarity_score))
-    # print(one_percent_recall)
+
     return recall, top1_similarity_score, one_percent_recall
 
 

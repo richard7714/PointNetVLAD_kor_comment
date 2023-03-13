@@ -112,7 +112,7 @@ def quadruplet_loss(q_vec, pos_vecs, neg_vecs, other_neg, m1, m2, use_min=False,
     
     # 
     if ignore_zero_loss:
-        # 크면 True, 작으면 False. Hard Assignment인듯
+        # 크면 True, 작으면 False.
         hard_triplets = torch.gt(triplet_loss, 1e-16).float()
         
         # True의 갯수
